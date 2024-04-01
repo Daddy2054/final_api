@@ -71,6 +71,7 @@ class Order(models.Model):
     )
     date = models.DateField(db_index=True)
 
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     menuitem = models.ForeignKey(MenuItem, on_delete=models.CASCADE)

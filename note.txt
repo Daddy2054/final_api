@@ -1,0 +1,18 @@
+Username: admin
+Email: admin@littlelemon.com
+Password: lemon@789!
+
+Username: Adrian
+Email: adrian@littlelemon.com
+Password: lemon@adr!
+{
+	"auth_token": "14a3bc7656c1163714350836425cd4ef3814e5f6"
+}
+
+Username: Mario
+Email: mario@littlelemon.com
+Password: lemon@mar!
+
+Username: Sana
+Email: sana@littlelemon.com
+Password: lemon@san!
