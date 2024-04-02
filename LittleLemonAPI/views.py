@@ -12,22 +12,56 @@ from LittleLemonAPI.serializers import MenuItemSerializer
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
+from .serializers import UserSerializer
 
 
-# Create your views here.
-@api_view(["POST", "DELETE"])
-@permission_classes([IsAdminUser])
-def managers(request):
-    username = request.data["username"]
-    if username:
-        user = get_object_or_404(User, username=username)
-        managers = Group.objects.get(name="Manager")
-        if request.method == "POST":
-            managers.user_set.add(user)
-        elif request.method == "DELETE":
-            managers.user_set.remove(user)
-        return Response({"message": "ok"})
-    return Response({"message": "error"}, status.HTTP_400_BAD_REQUEST)
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def assign2group(request, group):
+    if request.user.groups.filter(name="Manager").exists():
+        role = Group.objects.get(name=group)
+        if request.method == "GET":
+            serialized_user = UserSerializer(
+                role,
+                context={"request": request},
+            )
+            return Response(
+                serialized_user.data,
+                status.HTTP_200_OK,
+            )
+
+        elif request.method == "POST":
+            username = request.data["username"]
+            if username:
+                user = get_object_or_404(User, username=username)
+                role.user_set.add(user)
+                return Response(
+                    {"message": "ok"},
+                    status.HTTP_200_OK,
+                )
+    return Response(
+        {"message": "You are not a Manager"},
+        status.HTTP_400_BAD_REQUEST,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def remove_from_group(request, pk, group):
+    if request.user.groups.filter(name="Manager").exists():
+        user = get_object_or_404(User, pk=pk)
+        role = Group.objects.get(name=group)
+        role.user_set.remove(user)
+        return Response(
+            {"message": "ok"},
+            status.HTTP_200_OK,
+        )
+    else:
+        return Response(
+            {"message": "You are not a Manager"},
+            status.HTTP_403_FORBIDDEN,
+        )
+
 
 @permission_classes([IsAuthenticated])
 class MenuItemsViewSet(viewsets.ModelViewSet):
@@ -45,6 +79,7 @@ class MenuItemsViewSet(viewsets.ModelViewSet):
     #     else:
     #         throttle_classes = []
     #     return [throttle() for throttle in throttle_classes]
+
 
 # class MenuItemsView(generics.ListCreateAPIView):
 #     queryset = MenuItem.objects.all()
@@ -98,7 +133,7 @@ def menu_items(request):
         )
         return Response(serialized_item.data, status.HTTP_200_OK)
     else:
-        if request.user.groups.filter(name="Manager" ).exists():
+        if request.user.groups.filter(name="Manager").exists():
             serialized_item = MenuItemSerializer(data=request.data)
             serialized_item.is_valid(raise_exception=True)
             if request.method == "POST":
@@ -111,4 +146,6 @@ def menu_items(request):
                 serialized_item.instance.remove()
                 return Response(serialized_item.data, status.HTTP_200_OK)
         else:
-            return Response({"message": "You are not a Manager"}, status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"message": "You are not a Manager"}, status.HTTP_403_FORBIDDEN
+            )

@@ -3,8 +3,19 @@ from rest_framework import serializers
 from LittleLemonAPI.models import Category, MenuItem
 from rest_framework.validators import UniqueTogetherValidator
 import bleach
-
-
+from django.contrib.auth.models import User
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "is_staff",
+            "is_active",
+            "date_joined",
+        ]
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
