@@ -12,6 +12,6 @@ urlpatterns = [
         views.remove_from_group,
         {"group": "Delivery crew"},
     ),
-    path("menu-items/", views.menu_items),
-    path("menu-items/<int:pk>", views.MenuItemsViewSet.as_view({"get": "retrieve"})),
+    path("menu-items", views.MenuItemsView.as_view()),
+    path("menu-items/<int:pk>", views.MenuItemsViewSet.as_view()),
 ]

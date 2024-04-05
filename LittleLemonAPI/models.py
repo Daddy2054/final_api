@@ -1,7 +1,8 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group, Permission
 
 # Create your models here.
+
 
 
 class Category(models.Model):
@@ -31,12 +32,18 @@ class MenuItem(models.Model):
         on_delete=models.PROTECT,
         default=1,
     )
-
+    def set_perms():
+        group,_ = Group.objects.get_or_create(name="Manager")
+        group.permissions.add(Permission.objects.get(codename="add_menuitem"))
+        group.permissions.add(Permission.objects.get(codename="change_menuitem"))
+        group.permissions.add(Permission.objects.get(codename="delete_menuitem"))
+        group.permissions.add(Permission.objects.get(codename="view_menuitem"))
+        group.save()
 
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     menuitems = models.ForeignKey(MenuItem, on_delete=models.CASCADE)
-    quantity = (models.SmallIntegerField(),)
+    quantity = models.SmallIntegerField(default=1)
     unit_price = models.DecimalField(
         max_digits=6,
         decimal_places=2,
