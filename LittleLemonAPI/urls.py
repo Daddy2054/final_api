@@ -2,11 +2,19 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path("groups/manager/users", views.assign2group, {"group": "Manager"}),
     path(
-        "groups/manager/users/<int:pk>", views.remove_from_group, {"group": "Manager"}
+        "groups/manager/users",
+        views.ManagerView.as_view(),
     ),
-    path("groups/delivery-crew/users", views.assign2group, {"group": "Delivery crew"}),
+    path(
+        "groups/manager/users/<int:pk>",
+        views.remove_from_group,
+        {"group": "Manager"},
+    ),
+    path(
+        "groups/delivery-crew/users",
+        views.DeliveryView.as_view(),
+    ),
     path(
         "groups/delivery-crew/users/<int:pk>",
         views.remove_from_group,

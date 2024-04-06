@@ -11,41 +11,87 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import UserSerializer
 from .models import MenuItem
 
-# TODO: refactor with permission check
-@api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
-def assign2group(request, group):
-    if request.user.groups.filter(name="Manager").exists():
-        group2 = Group.objects.get_or_create(name="Manager2")
-        role = Group.objects.get(name=group)
-        members = Group.objects.select_related("user_id").all()
-        if request.method == "GET":
-            serialized_user = UserSerializer(
-                role,
-                # many=True,
-                # members,
-                context={"request": request},
-            )
+
+class ManagerView(generics.ListCreateAPIView):
+
+    group = Group.objects.get(name="Manager")
+    queryset = group.user_set.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        if request.user.groups.filter(name="Manager").exists():
+
+            group = Group.objects.get(name="Manager")
+            users = group.user_set.all()
+            serialized_users = UserSerializer(users, many=True)
             return Response(
-                serialized_user.data,
+                serialized_users.data,
                 status.HTTP_200_OK,
             )
+        return Response(
+            {"message": "You are not a Manager"},
+            status.HTTP_403_FORBIDDEN,
+        )
 
-        elif request.method == "POST":
+    def create(self, request, *args, **kwargs):
+        if request.user.groups.filter(name="Manager").exists():
             username = request.data["username"]
+            group = Group.objects.get(name="Manager")
+
             if username:
                 user = get_object_or_404(User, username=username)
-                role.user_set.add(user)
+                group.user_set.add(user)
                 return Response(
                     {"message": "ok"},
-                    status.HTTP_200_OK,
+                    status.HTTP_201_CREATED,
                 )
-    return Response(
-        {"message": "You are not a Manager"},
-        status.HTTP_400_BAD_REQUEST,
-    )
+        return Response(
+            {"message": "You are not a Manager"},
+            status.HTTP_403_FORBIDDEN,
+        )
 
-# TODO: refactor with permission check
+
+class DeliveryView(generics.ListCreateAPIView):
+
+    group = Group.objects.get(name="Delivery crew")
+    queryset = group.user_set.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        if request.user.groups.filter(name="Manager").exists():
+
+            group = Group.objects.get(name="Delivery crew")
+            users = group.user_set.all()
+            serialized_users = UserSerializer(users, many=True)
+            return Response(
+                serialized_users.data,
+                status.HTTP_200_OK,
+            )
+        return Response(
+            {"message": "You are not a Manager"},
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def create(self, request, *args, **kwargs):
+        if request.user.groups.filter(name="Manager").exists():
+            username = request.data["username"]
+            group = Group.objects.get(name="Delivery crew")
+
+            if username:
+                user = get_object_or_404(User, username=username)
+                group.user_set.add(user)
+                return Response(
+                    {"message": "ok"},
+                    status.HTTP_201_CREATED,
+                )
+        return Response(
+            {"message": "You are not a Manager"},
+            status.HTTP_403_FORBIDDEN,
+        )
+
+
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def remove_from_group(request, pk, group):
@@ -77,7 +123,7 @@ class MenuItemsView(generics.ListCreateAPIView):
                 {"message": "You are not a Manager"},
                 status.HTTP_403_FORBIDDEN,
             )
-        return super().create(request, *args, **kwargs) 
+        return super().create(request, *args, **kwargs)
 
 
 class MenuItemsViewSet(generics.RetrieveUpdateDestroyAPIView):
