@@ -63,17 +63,17 @@ class MenuItemSerializer(serializers.ModelSerializer):
         ]
 
 
-class CartMenuItemSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
+# class CartMenuItemSerializer(serializers.ModelSerializer):
+#     category = CategorySerializer(read_only=True)
 
-    class Meta:
-        model = MenuItem
-        depth = 1
-        fields = [
-            "id",
-            "title",
-            "category",
-        ]
+#     class Meta:
+#         model = MenuItem
+#         depth = 1
+#         fields = [
+#             "id",
+#             "title",
+#             "category",
+#         ]
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -88,3 +88,44 @@ class CartSerializer(serializers.ModelSerializer):
             "unit_price",
             "price",
         ]
+
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    menuitems = MenuItemSerializer(read_only=True)
+
+    class Meta:
+        model = OrderItem
+        fields = [
+            "id",
+            "order",
+            "menuitems",
+            "quantity",
+            "unit_price",
+            "price",
+        ]   
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    order_items = OrderItemSerializer(many=True, read_only=True)
+    quantity = serializers.IntegerField(read_only=True)
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
+
+    class Meta:
+        model = Order
+        depth = 1
+        fields = [
+            "id",
+            # "user",
+            'delivery_crew',
+            'status',
+            'total',
+            'date',
+            "order_items",
+            "quantity",
+            "unit_price",
+            "price",
+        ]
+

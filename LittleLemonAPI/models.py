@@ -79,8 +79,12 @@ class Order(models.Model):
     total = models.DecimalField(
         max_digits=6,
         decimal_places=2,
+        default=0.00,
     )
-    date = models.DateField(db_index=True)
+    date = models.DateField(
+        db_index=True,
+        auto_now_add=True,
+    )
 
 
 class OrderItem(models.Model):

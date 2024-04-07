@@ -8,8 +8,8 @@ from LittleLemonAPI.models import MenuItem
 from LittleLemonAPI.serializers import MenuItemSerializer
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from .serializers import CartSerializer, UserSerializer
-from .models import Cart, MenuItem
+from .serializers import CartSerializer, OrderSerializer, UserSerializer
+from .models import Cart, MenuItem, Order, OrderItem
 from decimal import Decimal
 
 
@@ -171,7 +171,7 @@ class CartItemsView(generics.ListCreateAPIView, generics.DestroyAPIView):
 
     def create(self, request, *args, **kwargs):
         user = User.objects.get(id=request.user.id)
-        menuitems_id = request.data.get("menuitems")  
+        menuitems_id = request.data.get("menuitems")
         if menuitems_id is None:
             return Response(
                 {"message": "menuitems is required"},
@@ -206,3 +206,60 @@ class CartItemsView(generics.ListCreateAPIView, generics.DestroyAPIView):
         queryset.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrdersViewSet(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class OrdersView(generics.ListCreateAPIView):
+    # serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+# TODO: find a query to return orders with related items ????
+    # Returns all orders with related order items created by this user
+    def get(self, request, *args, **kwargs):
+        queryset = (
+            Order.objects.filter(user=request.user.id).join(OrderItem).all())
+        serializer_class = OrderSerializer(
+            queryset,
+            many=True,
+            context={"request": request},
+        )
+        return Response(serializer_class.data)
+
+    # Creates a new order item for the current user.
+    # Gets current cart items from the cart endpoints
+    # and adds those items to the order items table.
+    # Then deletes all items from the cart for this user.
+    def create(self, request, *args, **kwargs):
+        # get cart items
+        user = User.objects.get(id=request.user.id)
+        cart_items = Cart.objects.filter(user=request.user.id)
+
+        # create order
+        order = Order(user=user)
+        order.save()
+
+        # create order items
+        order_total = Decimal("0.00")
+        for cart_item in cart_items:
+            order_item = OrderItem(
+                order=order,
+                menuitem=cart_item.menuitems,
+                unit_price=cart_item.unit_price,
+                quantity=cart_item.quantity,
+                price=cart_item.price,
+            )
+
+            # add cart_item.price to total_price
+            order_total += order_item.price
+            order_item.save()
+        # update order total
+        order.total = order_total
+        order.save()
+
+        # delete cart items
+        cart_items.delete()
+
+        return Response(status=status.HTTP_201_CREATED)
