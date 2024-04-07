@@ -8,8 +8,9 @@ from LittleLemonAPI.models import MenuItem
 from LittleLemonAPI.serializers import MenuItemSerializer
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from .serializers import UserSerializer
-from .models import MenuItem
+from .serializers import CartSerializer, UserSerializer
+from .models import Cart, MenuItem
+from decimal import Decimal
 
 
 class ManagerView(generics.ListCreateAPIView):
@@ -54,7 +55,8 @@ class ManagerView(generics.ListCreateAPIView):
 
 class DeliveryView(generics.ListCreateAPIView):
 
-    group = Group.objects.get(name="Delivery crew")
+    group, _ = Group.objects.get_or_create(name="Delivery crew")
+    # group = Group.objects.get(name="Delivery crew")
     queryset = group.user_set.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -77,7 +79,9 @@ class DeliveryView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         if request.user.groups.filter(name="Manager").exists():
             username = request.data["username"]
-            group = Group.objects.get(name="Delivery crew")
+            group, _ = Group.objects.get_or_create(name="Delivery crew")
+
+            # group = Group.objects.get(name="Delivery crew")
 
             if username:
                 user = get_object_or_404(User, username=username)
@@ -149,3 +153,56 @@ class MenuItemsViewSet(generics.RetrieveUpdateDestroyAPIView):
                 status.HTTP_403_FORBIDDEN,
             )
         return super().destroy(request, *args, **kwargs)
+
+
+class CartItemsView(generics.ListCreateAPIView, generics.DestroyAPIView):
+
+    serializer_class = CartSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        queryset = Cart.objects.filter(user=request.user.id)
+        serializer_class = CartSerializer(
+            queryset,
+            many=True,
+            context={"request": request},
+        )
+        return Response(serializer_class.data)
+
+    def create(self, request, *args, **kwargs):
+        user = User.objects.get(id=request.user.id)
+        menuitems_id = request.data.get("menuitems")  
+        if menuitems_id is None:
+            return Response(
+                {"message": "menuitems is required"},
+                status.HTTP_400_BAD_REQUEST,
+            )
+        menuitems = MenuItem.objects.get(id=menuitems_id)
+        unit_price = MenuItem.objects.get(id=menuitems_id).price
+        quantity = request.data.get("quantity")
+        if quantity is None:
+            return Response(
+                {"message": "quantity is required"},
+                status.HTTP_400_BAD_REQUEST,
+            )
+        # convert str to decimal
+        quantity = Decimal(quantity)
+        # calculate price
+        price = unit_price * quantity
+        # create cart item
+        cart = Cart(
+            user=user,
+            # menuitem_id=menuitems_id,
+            menuitems=menuitems,
+            unit_price=unit_price,
+            quantity=quantity,
+            price=price,
+        )
+        #  cart.save()
+        return super().create(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        queryset = Cart.objects.filter(user=request.user.id)
+        queryset.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

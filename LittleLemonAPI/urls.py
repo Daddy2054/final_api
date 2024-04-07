@@ -22,4 +22,6 @@ urlpatterns = [
     ),
     path("menu-items", views.MenuItemsView.as_view()),
     path("menu-items/<int:pk>", views.MenuItemsViewSet.as_view()),
+
+    path("cart/menu-items", views.CartItemsView.as_view()),
 ]

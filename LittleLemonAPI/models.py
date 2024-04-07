@@ -4,7 +4,6 @@ from django.contrib.auth.models import User, Group, Permission
 # Create your models here.
 
 
-
 class Category(models.Model):
     slug = models.SlugField()
     title = models.CharField(max_length=255, db_index=True)
@@ -32,13 +31,15 @@ class MenuItem(models.Model):
         on_delete=models.PROTECT,
         default=1,
     )
+
     def set_perms():
-        group,_ = Group.objects.get_or_create(name="Manager")
+        group, _ = Group.objects.get_or_create(name="Manager")
         group.permissions.add(Permission.objects.get(codename="add_menuitem"))
         group.permissions.add(Permission.objects.get(codename="change_menuitem"))
         group.permissions.add(Permission.objects.get(codename="delete_menuitem"))
         group.permissions.add(Permission.objects.get(codename="view_menuitem"))
         group.save()
+
 
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -56,6 +57,9 @@ class Cart(models.Model):
     class Meta:
         unique_together = (
             "menuitems",
+            "quantity",
+            "unit_price",
+            "price",
             "user",
         )
 
