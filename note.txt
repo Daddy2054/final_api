@@ -12,8 +12,12 @@ Password: lemon@adr!
 Username: Mario
 Email: mario@littlelemon.com
 Password: lemon@mar!
-3e280f9e49e9f61cf753370a208fa42a6008ca60
+{
+	"auth_token": "3e280f9e49e9f61cf753370a208fa42a6008ca60"
+}
 Username: Sana
 Email: sana@littlelemon.com
 Password: lemon@san!
-5bb2804d4713939a33c007d0b230a840d421bde5
+{
+	"auth_token": "5bb2804d4713939a33c007d0b230a840d421bde5"
+}

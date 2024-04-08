@@ -8,7 +8,12 @@ from LittleLemonAPI.models import MenuItem
 from LittleLemonAPI.serializers import MenuItemSerializer
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from .serializers import CartSerializer, OrderSerializer, UserSerializer
+from .serializers import (
+    CartSerializer,
+    OrderItemSerializer,
+    OrderSerializer,
+    UserSerializer,
+)
 from .models import Cart, MenuItem, Order, OrderItem
 from decimal import Decimal
 
@@ -212,21 +217,120 @@ class OrdersViewSet(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
-
-class OrdersView(generics.ListCreateAPIView):
-    # serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
-# TODO: find a query to return orders with related items ????
-    # Returns all orders with related order items created by this user
     def get(self, request, *args, **kwargs):
-        queryset = (
-            Order.objects.filter(user=request.user.id).join(OrderItem).all())
-        serializer_class = OrderSerializer(
+        order_id = kwargs.get("pk")
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return Response(
+                {"message": "This order does not exist"},
+                status.HTTP_404_NOT_FOUND,
+            )
+        if order.user == User.objects.get(id=request.user.id) is False:
+            return Response(
+                {"message": "This is not an order of current user"},
+                status.HTTP_403_FORBIDDEN,
+            )
+
+        queryset = OrderItem.objects.filter(order_id=order_id).select_related(
+            "menuitem"
+        )
+        if queryset.count() == 0:
+            return Response(
+                {"message": "This order have no order items"},
+                status.HTTP_404_NOT_FOUND,
+            )
+        serializer_class = OrderItemSerializer(
             queryset,
             many=True,
             context={"request": request},
         )
         return Response(serializer_class.data)
+
+    # checked!
+    def update(self, request, *args, **kwargs):
+        order_id = kwargs.get("pk")
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return Response(
+                {"message": "This order does not exist"},
+                status.HTTP_404_NOT_FOUND,
+            )
+        if request.user.groups.filter(name="Manager").exists():
+            try:
+                order.status = request.data["status"]
+                order.delivery_crew = User.objects.get(id=request.data["delivery_crew"])
+            except Exception as e:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+
+            order.save()
+            return Response(status=status.HTTP_200_OK)
+        if not request.user.groups.filter(name="Delivery crew").exists():
+            return Response(
+                {"message": "You are not a Delivery crew"},
+                status.HTTP_403_FORBIDDEN,
+            )
+        if order.delivery_crew == request.user.id is False:
+            return Response(
+                {"message": "This order is not assigned to current user"},
+                status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            order.status = request.data["status"]
+        except Exception as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        order.save()
+        return Response(status=status.HTTP_200_OK)
+
+    # checked!
+    def destroy(self, request, *args, **kwargs):
+        order_id = kwargs.get("pk")
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return Response(
+                {"message": "This order does not exist"},
+                status.HTTP_404_NOT_FOUND,
+            )
+        if not request.user.groups.filter(name="Manager").exists():
+            return Response(
+                {"message": "You are not a Manager"},
+                status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
+class OrdersView(generics.ListCreateAPIView):
+    # serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        if request.user.groups.filter(name="Manager").exists():
+            queryset = OrderItem.objects.all().select_related("menuitem")
+
+        elif request.user.groups.filter(name="Delivery crew").exists():
+            queryset = OrderItem.objects.filter(
+                order__delivery_crew=request.user.id
+            ).select_related("menuitem")
+        else:  # user must be in Customer group
+            # Returns all orders with related order items created by this user
+
+            queryset = OrderItem.objects.filter(
+                order__user=request.user.id
+            ).select_related("menuitem")
+            if queryset is None:
+                return Response(
+                    {"message": "You have no order items"},
+                    status.HTTP_404_NOT_FOUND,
+                )
+            serializer_class = OrderItemSerializer(
+                queryset,
+                many=True,
+                context={"request": request},
+            )
+            return Response(serializer_class.data)
 
     # Creates a new order item for the current user.
     # Gets current cart items from the cart endpoints
