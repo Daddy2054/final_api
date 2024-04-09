@@ -1,6 +1,7 @@
 Username: admin
 Email: admin@littlelemon.com
 Password: lemon@789!
+e13da8b8d8a46c61af9e57d05ff2c83741b0527e
 
 Username: Adrian
 Email: adrian@littlelemon.com
@@ -20,4 +21,10 @@ Email: sana@littlelemon.com
 Password: lemon@san!
 {
 	"auth_token": "5bb2804d4713939a33c007d0b230a840d421bde5"
+}
+Username: someusername
+Email: 
+Password: pass123!
+{
+	"auth_token": "b717b365e7fcb6780e2ba2d14e69b99e2c81e877"
 }

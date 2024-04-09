@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import permission_classes
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 from rest_framework.pagination import PageNumberPagination
@@ -11,14 +11,28 @@ from rest_framework import status
 from rest_framework import generics
 from .serializers import (
     CartSerializer,
+    CategorySerializer,
     OrderItemSerializer,
     OrderSerializer,
     UserSerializer,
     MenuItemSerializer,
 )
-from .models import Cart, MenuItem, Order, OrderItem
+from .models import Cart, Category, MenuItem, Order, OrderItem
 from decimal import Decimal
 
+@api_view(["POST",'DELETE'])
+@permission_classes([IsAdminUser])
+def managers(request):
+    username = request.data["username"]
+    if username:
+        user = get_object_or_404(User, username=username)
+        managers = Group.objects.get(name="Manager")
+        if request.method == "POST":
+            managers.user_set.add(user) # type: ignore
+        elif request.method == "DELETE":
+            managers.user_set.remove(user) # type: ignore
+        return Response({"message": "ok"})
+    return Response({"message": "error"}, status.HTTP_400_BAD_REQUEST)
 
 class ManagerView(generics.ListCreateAPIView):
 
@@ -120,25 +134,37 @@ def remove_from_group(request, pk, group):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-
-class MenuItemsView(generics.ListCreateAPIView):
-    throttle_classes = [AnonRateThrottle, UserRateThrottle] 
-    queryset = MenuItem.objects.all().order_by("id")
-    serializer_class = MenuItemSerializer
-    ordering_fields = ["price"]
+class CategoriesView(generics.ListCreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
-    search_fields = ["title", "category__title"]
-    filterset_fields = ["id", "price", "category__title", "title"]
-    pagination_class = PageNumberPagination
-
     def create(self, request, *args, **kwargs):
+
         if not request.user.has_perm("LittleLemonAPI.add_menuitem"):
             return Response(
                 {"message": "You are not a Manager"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         return super().create(request, *args, **kwargs)
+class MenuItemsView(generics.ListCreateAPIView):
+    throttle_classes = [AnonRateThrottle, UserRateThrottle] 
+    queryset = MenuItem.objects.all().order_by("id")
+    serializer_class = MenuItemSerializer
+    ordering_fields = ["price"] #http://127.0.0.1:8000/api/menu-items?page=1&ordering=price
+    search_fields = ["title", "category__title"] # http://127.0.0.1:8000/api/menu-items?search=dessert
+    filterset_fields = ["id", "price", "category__title", "title"]
+    permission_classes = [IsAuthenticated]
+    pagination_class = PageNumberPagination # http://127.0.0.1:8000/api/menu-items?page=2
 
+    # @permission_classes([IsAuthenticated])
+    def create(self, request, *args, **kwargs):
+
+        if not request.user.has_perm("LittleLemonAPI.add_menuitem"):
+            return Response(
+                {"message": "You are not a Manager"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
 
 class MenuItemsViewSet(generics.RetrieveUpdateDestroyAPIView):
     throttle_classes = [AnonRateThrottle, UserRateThrottle]
@@ -147,6 +173,7 @@ class MenuItemsViewSet(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = MenuItemSerializer
     ordering_fields = ["price"]
     permission_classes = [IsAuthenticated]
+
 
     def update(self, request, *args, **kwargs):
         if not request.user.has_perm("LittleLemonAPI.change_menuitem"):
@@ -333,7 +360,8 @@ class OrdersView(generics.ListCreateAPIView):
         perpage = request.query_params.get("perpage", default=2)
         page = request.query_params.get("page", default=1)
 
-        queryset = OrderItem.objects.all().select_related("menuitem")
+        queryset = OrderItem.objects.all().order_by("-order__date").select_related("menuitem")
+        # queryset = OrderItem.objects.all().select_related("menuitem")
         if search:
             queryset = queryset.filter(menuitem__title__icontains=search)
         if to_price:
@@ -367,7 +395,7 @@ class OrdersView(generics.ListCreateAPIView):
             case "Delivery crew":
                 queryset = queryset.filter(
                     order__delivery_crew=User.objects.get(
-                        id=request.data["delivery_crew"]
+                        id=request.user.id
                     )
                 ).select_related("menuitem")
             case "Customer":
