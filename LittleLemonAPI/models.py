@@ -29,10 +29,10 @@ class MenuItem(models.Model):
     category = models.ForeignKey(
         Category,
         on_delete=models.PROTECT,
-        default=1,
-    )
+        default=1, # type: ignore
+    ) # type: ignore
 
-    def set_perms():
+    def set_perms(): # type: ignore
         group, _ = Group.objects.get_or_create(name="Manager")
         group.permissions.add(Permission.objects.get(codename="add_menuitem"))
         group.permissions.add(Permission.objects.get(codename="change_menuitem"))
@@ -79,8 +79,8 @@ class Order(models.Model):
     total = models.DecimalField(
         max_digits=6,
         decimal_places=2,
-        default=0.00,
-    )
+        default=0.00, # type: ignore
+    ) # type: ignore
     date = models.DateField(
         db_index=True,
         auto_now_add=True,
