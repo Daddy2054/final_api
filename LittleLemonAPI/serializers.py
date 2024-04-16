@@ -36,13 +36,13 @@ class MenuItemSerializer(serializers.ModelSerializer):
     category_id = serializers.IntegerField(write_only=True)
 
     # To sanitize the title field v2
-    def validate(self, attrs):
-        attrs["title"] = bleach.clean(attrs["title"])
-        if attrs["price"] < 2:
-            raise serializers.ValidationError("Price should not be less than 2.0")
-        # if(attrs['inventory']<0):
-        #     raise serializers.ValidationError('Stock cannot be negative')
-        return super().validate(attrs)
+    # def validate(self, attrs):
+    #     attrs["title"] = bleach.clean(attrs["title"])
+    #     if attrs["price"] < 2:
+    #         raise serializers.ValidationError("Price should not be less than 2.0")
+    #     # if(attrs['inventory']<0):
+    #     #     raise serializers.ValidationError('Stock cannot be negative')
+    #     return super().validate(attrs)
 
     class Meta:
         model = MenuItem
@@ -51,6 +51,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
+            'featured',
             "category",
             "category_id",
         ]

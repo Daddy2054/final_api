@@ -83,7 +83,7 @@ class Order(models.Model):
     ) # type: ignore
     date = models.DateField(
         db_index=True,
-        auto_now_add=True,
+        # auto_now_add=True,
     )
 
 

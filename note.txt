@@ -1,30 +1,18 @@
-Username: admin
+Username: admin		superuser
 Email: admin@littlelemon.com
 Password: lemon@789!
 e13da8b8d8a46c61af9e57d05ff2c83741b0527e
 
-Username: Adrian
+Username: Adrian	Manager		
 Email: adrian@littlelemon.com
 Password: lemon@adr!
 {
 	"auth_token": "6d663fedac0cdf18b9d879be5ae3b976f4d5d2f7"
 }
 
-Username: Mario
+Username: Mario		Delivery
 Email: mario@littlelemon.com
 Password: lemon@mar!
 {
 	"auth_token": "3e280f9e49e9f61cf753370a208fa42a6008ca60"
-}
-Username: Sana
-Email: sana@littlelemon.com
-Password: lemon@san!
-{
-	"auth_token": "5bb2804d4713939a33c007d0b230a840d421bde5"
-}
-Username: someusername
-Email: 
-Password: pass123!
-{
-	"auth_token": "b717b365e7fcb6780e2ba2d14e69b99e2c81e877"
 }

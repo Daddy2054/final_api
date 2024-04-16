@@ -19,8 +19,10 @@ from .serializers import (
 )
 from .models import Cart, Category, MenuItem, Order, OrderItem
 from decimal import Decimal
+from datetime import datetime
 
-@api_view(["POST",'DELETE'])
+
+@api_view(["POST", "DELETE"])
 @permission_classes([IsAdminUser])
 def managers(request):
     username = request.data["username"]
@@ -28,57 +30,61 @@ def managers(request):
         user = get_object_or_404(User, username=username)
         managers = Group.objects.get(name="Manager")
         if request.method == "POST":
-            managers.user_set.add(user) # type: ignore
+            managers.user_set.add(user)  # type: ignore
         elif request.method == "DELETE":
-            managers.user_set.remove(user) # type: ignore
+            managers.user_set.remove(user)  # type: ignore
         return Response({"message": "ok"})
     return Response({"message": "error"}, status.HTTP_400_BAD_REQUEST)
 
-class ManagerView(generics.ListCreateAPIView):
+
+class ManagerView(generics.ListCreateAPIView, generics.DestroyAPIView):
 
     group = Group.objects.get(name="Manager")
-    queryset = group.user_set.all() # type: ignore
+    queryset = group.user_set.all()  # type: ignore
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request, *args, **kwargs):
-        if request.user.groups.filter(name="Manager").exists():
+        # if request.user.IsAdminUser or request.user.groups.filter(name="Manager").exists():
 
-            group = Group.objects.get(name="Manager")
-            users = group.user_set.all() # type: ignore
-            serialized_users = UserSerializer(users, many=True)
-            return Response(
-                serialized_users.data,
-                status=status.HTTP_200_OK,
-            )
+        # group = Group.objects.get(name="Manager")
+        users = group.user_set.all()  # type: ignore
+        serialized_users = UserSerializer(users, many=True)
         return Response(
-            {"message": "You are not a Manager"},
-            status=status.HTTP_403_FORBIDDEN,
+            serialized_users.data,
+            status=status.HTTP_200_OK,
         )
+
+    # return Response(
+    #     {"message": "You are not a Manager"},
+    #     status=status.HTTP_403_FORBIDDEN,
+    # )
 
     def create(self, request, *args, **kwargs):
-        if request.user.groups.filter(name="Manager").exists():
-            username = request.data["username"]
-            group = Group.objects.get(name="Manager")
+        # if request.user.groups.filter(name="Manager").exists():
+        username = request.data["username"]
+        group = Group.objects.get(name="Manager")
 
-            if username:
-                user = get_object_or_404(User, username=username)
-                group.user_set.add(user) # type: ignore
-                return Response(
-                    {"message": "ok"},
-                    status=status.HTTP_201_CREATED,
-                )
-        return Response(
-            {"message": "You are not a Manager"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+        if username:
+            user = get_object_or_404(User, username=username)
+            group.user_set.add(user)  # type: ignore
+            return Response(
+                {"message": "ok"},
+                status=status.HTTP_201_CREATED,
+            )
+
+    # return Response(
+    #     {"message": "You are not a Manager"},
+    #     status=status.HTTP_403_FORBIDDEN,
+    # )
 
 
 class DeliveryView(generics.ListCreateAPIView):
 
     group, _ = Group.objects.get_or_create(name="Delivery crew")
     # group = Group.objects.get(name="Delivery crew")
-    queryset = group.user_set.all() # type: ignore
+    queryset = group.user_set.all()  # type: ignore
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
@@ -86,7 +92,7 @@ class DeliveryView(generics.ListCreateAPIView):
         if request.user.groups.filter(name="Manager").exists():
 
             group = Group.objects.get(name="Delivery crew")
-            users = group.user_set.all() # type: ignore
+            users = group.user_set.all()  # type: ignore
             serialized_users = UserSerializer(users, many=True)
             return Response(
                 serialized_users.data,
@@ -106,7 +112,7 @@ class DeliveryView(generics.ListCreateAPIView):
 
             if username:
                 user = get_object_or_404(User, username=username)
-                group.user_set.add(user) # type: ignore
+                group.user_set.add(user)  # type: ignore
                 return Response(
                     {"message": "ok"},
                     status=status.HTTP_201_CREATED,
@@ -118,53 +124,69 @@ class DeliveryView(generics.ListCreateAPIView):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUser])
 def remove_from_group(request, pk, group):
-    if request.user.groups.filter(name="Manager").exists():
-        user = get_object_or_404(User, pk=pk)
-        role = Group.objects.get(name=group)
-        role.user_set.remove(user) # type: ignore
-        return Response(
-            {"message": "ok"},
-            status=status.HTTP_200_OK,
-        )
-    else:
-        return Response(
-            {"message": "You are not a Manager"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+    # if request.user.groups.filter(name="Manager").exists():
+    user = get_object_or_404(User, pk=pk)
+    role = Group.objects.get(name=group)
+    role.user_set.remove(user)  # type: ignore
+    return Response(
+        {"message": "ok"},
+        status=status.HTTP_200_OK,
+    )
+
+
+# else:
+#     return Response(
+#         {"message": "You are not a Manager"},
+#         status=status.HTTP_403_FORBIDDEN,
+#     )
+
 
 class CategoriesView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
+
     def create(self, request, *args, **kwargs):
 
-        if not request.user.has_perm("LittleLemonAPI.add_menuitem"):
+        # if not request.user.has_perm("LittleLemonAPI.add_menuitem"):
+        if not request.user.is_staff:
             return Response(
                 {"message": "You are not a Manager"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         return super().create(request, *args, **kwargs)
+
+
 class MenuItemsView(generics.ListCreateAPIView):
-    throttle_classes = [AnonRateThrottle, UserRateThrottle] 
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
     queryset = MenuItem.objects.all().order_by("id")
     serializer_class = MenuItemSerializer
-    ordering_fields = ["price"] #http://127.0.0.1:8000/api/menu-items?page=1&ordering=price
-    search_fields = ["title", "category__title"] # http://127.0.0.1:8000/api/menu-items?search=dessert
+    ordering_fields = [
+        "price"
+    ]  # http://127.0.0.1:8000/api/menu-items?page=1&ordering=price
+    search_fields = [
+        "title",
+        "category__title",
+    ]  # http://127.0.0.1:8000/api/menu-items?search=dessert
     filterset_fields = ["id", "price", "category__title", "title"]
     permission_classes = [IsAuthenticated]
-    pagination_class = PageNumberPagination # http://127.0.0.1:8000/api/menu-items?page=2
+    pagination_class = (
+        PageNumberPagination  # http://127.0.0.1:8000/api/menu-items?page=2
+    )
 
-    # @permission_classes([IsAuthenticated])
+    # @permission_classes([IsAdminUser]) # type: ignore
     def create(self, request, *args, **kwargs):
 
-        if not request.user.has_perm("LittleLemonAPI.add_menuitem"):
+        # if not request.user.has_perm("LittleLemonAPI.add_menuitem"):
+        if not request.user.is_staff:
             return Response(
                 {"message": "You are not a Manager"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         return super().create(request, *args, **kwargs)
+
 
 class MenuItemsViewSet(generics.RetrieveUpdateDestroyAPIView):
     throttle_classes = [AnonRateThrottle, UserRateThrottle]
@@ -174,9 +196,9 @@ class MenuItemsViewSet(generics.RetrieveUpdateDestroyAPIView):
     ordering_fields = ["price"]
     permission_classes = [IsAuthenticated]
 
-
     def update(self, request, *args, **kwargs):
         if not request.user.has_perm("LittleLemonAPI.change_menuitem"):
+            # if not request.user.is_staff:
 
             return Response(
                 {"message": "You are not a Manager"},
@@ -186,6 +208,7 @@ class MenuItemsViewSet(generics.RetrieveUpdateDestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         if not request.user.has_perm("LittleLemonAPI.delete_menuitem"):
+            # if not request.user.is_staff:
             return Response(
                 {"message": "You are not a Manager"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -211,11 +234,11 @@ class CartItemsView(generics.ListCreateAPIView, generics.DestroyAPIView):
     def create(self, request, *args, **kwargs):
         user = User.objects.get(id=request.user.id)
         try:
-            menuitems_id = request.data.get("menuitems")
+            menuitems_id = request.data.get("menuitem")
             menuitems = MenuItem.objects.get(id=menuitems_id)
         except MenuItem.DoesNotExist:
             return Response(
-                {"message": "menuitems does not exist"},
+                {"message": "menuitem does not exist"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         unit_price = MenuItem.objects.get(id=menuitems_id).price
@@ -296,7 +319,7 @@ class OrdersViewSet(generics.RetrieveUpdateDestroyAPIView):
             )
         if request.user.groups.filter(name="Manager").exists():
             try:
-                order.status = request.data["status"]
+                # order.status = request.data["status"]
                 order.delivery_crew = User.objects.get(id=request.data["delivery_crew"])
             except Exception as e:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -356,11 +379,13 @@ class OrdersView(generics.ListCreateAPIView):
         delivery_crew = request.query_params.get("delivery_crew")
         # ordering
         ordering = request.query_params.get("ordering")
-       # Pagination
+        # Pagination
         perpage = request.query_params.get("perpage", default=2)
         page = request.query_params.get("page", default=1)
 
-        queryset = OrderItem.objects.all().order_by("-order__date").select_related("menuitem")
+        queryset = (
+            OrderItem.objects.all().order_by("-order__date").select_related("menuitem")
+        )
         # queryset = OrderItem.objects.all().select_related("menuitem")
         if search:
             queryset = queryset.filter(menuitem__title__icontains=search)
@@ -394,9 +419,7 @@ class OrdersView(generics.ListCreateAPIView):
                 pass
             case "Delivery crew":
                 queryset = queryset.filter(
-                    order__delivery_crew=User.objects.get(
-                        id=request.user.id
-                    )
+                    order__delivery_crew=User.objects.get(id=request.user.id)
                 ).select_related("menuitem")
             case "Customer":
 
@@ -408,7 +431,7 @@ class OrdersView(generics.ListCreateAPIView):
                 {"message": "Such order do not exists"},
                 404,
             )
-    # Pagination object inializing
+        # Pagination object inializing
         paginator = Paginator(queryset, per_page=perpage)
         try:
             queryset = paginator.page(number=page)
@@ -435,7 +458,11 @@ class OrdersView(generics.ListCreateAPIView):
 
         # create order
         order = Order(user=user)
-        order.save()
+        # date = args.ge/t('date')
+        if request.query_params["date"] is not None:
+            date_str = request.query_params["date"]
+            order.date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            order.save()
 
         # create order items
         order_total = Decimal("0.00")
